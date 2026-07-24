@@ -56,3 +56,29 @@ worth noting:
 Use order_status as the source of truth for "was this order delivered,"
 not the presence/absence of order_delivered_customer_date. Don't silently
 drop or mis-flag these 8 orders due to the missing timestamp.
+
+
+## olist_order_items_dataset.csv
+
+**Shape:** 112,650 rows, 7 columns
+
+**Keys:** order_id.nunique() = 98,666, LESS than row count -- confirms
+line-item grain, not order grain (~13,984 extra rows from orders with
+more than one product).
+
+**Quantity note:** No quantity column exists. Each unit purchased gets
+its own row (order_item_id numbers them 1, 2, 3...). Verified directly:
+order "086928951ba74a6682919fc942c458d0" has 5 rows, same product_id/
+seller_id/price -- 5 units of ONE product, not 5 different products.
+
+groupby(['order_id','product_id']).size() -> 102,425 unique order-product
+pairs. Of those, 7,088 (~6.9%) involve more than 1 unit -- multi-unit
+purchases are a real but minority pattern.
+
+To get quantity per product per order: groupby(['order_id','product_id']).size(),
+not a direct column read.
+
+**Dtypes:** price and freight_value correctly float64. shipping_limit_date
+is str, not datetime -- same load-hygiene fix needed as other date columns.
+
+**Nulls/duplicates:** 0 nulls, 0 duplicate rows -- clean file.

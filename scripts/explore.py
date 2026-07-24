@@ -1,15 +1,13 @@
 import pandas as pd
-df = pd.read_csv('raw_csv/olist_orders_dataset.csv')
+df=pd.read_csv('raw_csv/olist_order_items_dataset.csv')
 print(df.head())
 print(df.sample(10))
 print(df.shape)
 print(df.dtypes)
 print(df.isnull().sum())
 print(df.duplicated().sum())
-print(df['order_status'].value_counts())
 print(df['order_id'].nunique())
-print(df.groupby('order_status')['order_delivered_customer_date'].apply(lambda x: x.isnull().sum()))
-print(
-    df[
-        (df['order_status']=="delivered") & (df['order_delivered_customer_date'].isnull())
-        ])
+print(df[df['order_id']=="086928951ba74a6682919fc942c458d0"])
+qty = df.groupby(['order_id', 'product_id']).size()
+print((qty > 1).sum())
+
