@@ -26,3 +26,26 @@ pay_not_defined = df[df['payment_type'] == 'not_defined']
 print(pay_not_defined)
 for oid in pay_not_defined['order_id']:
     print(df[df['order_id']==oid])
+
+agg_field=df.groupby('payment_type').agg(
+    avg_pay=('payment_value','mean'),
+    total_pay=('payment_value','sum'),
+    mx_pay=('payment_value','max'),
+    mn_pay=('payment_value', 'min')
+).sort_values('mx_pay',ascending=True)
+
+print(agg_field)
+
+
+print (df[(df['payment_type']=='credit_card') & (df['payment_value'] < 1)])
+
+below_dollar=df[df['payment_value'] <1 ]
+
+print(below_dollar.groupby('payment_type').size())
+
+exmaple=below_dollar[below_dollar['payment_type']=='credit_card'].iloc[0]
+print(df[df['order_id']== exmaple['order_id']])
+
+below_dollar_credit= below_dollar[below_dollar['payment_type']=='credit_card']
+counts_for_these= below_dollar_credit['order_id'].map(multi)
+print((counts_for_these == 1).sum())
