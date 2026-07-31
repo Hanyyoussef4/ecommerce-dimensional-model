@@ -175,3 +175,77 @@ all 91 sub-$1 credit_card rows against each order's total row count
 single one is part of a multi-payment order (voucher/etc covering the
 rest). Fully confirms this is the split-payment remainder pattern, not
 a data quality issue -- genuinely closed, no further digging needed.
+
+---
+
+## olist_order_reviews_dataset.csv
+
+**Shape:** 99,224 rows, 7 columns
+
+**Dtypes:** review_id, order_id, review_comment_title,
+review_comment_message, review_creation_date, review_answer_timestamp
+are str. review_score is int64. Date columns are str, not datetime --
+same load-hygiene issue as every other file with dates.
+
+**Nulls:**
+- review_comment_title: 87,656 nulls
+- review_comment_message: 58,247 nulls
+- all other columns: 0 nulls
+
+Likely normal -- customers can leave just a score with no title/message.
+Worth noting comment_title has more nulls than comment_message, meaning
+some customers write a message without a title.
+
+**Duplicates:** 0 duplicate rows.
+
+**review_score distribution (groupby.size()):**
+1: 11,424, 2: 3,151, 3: 8,179, 4: 19,142, 5: 57,328
+
+**ASSUMPTION (not explicitly confirmed in the CSV):** 5 = most satisfied,
+1 = least satisfied. Based on standard review-scale convention (matches
+Olist's public dataset documentation) and supported by the distribution
+shape itself -- heavy concentration at 5, smaller cluster at 1, consistent
+with typical satisfaction-rating patterns. Worth confirming against
+Kaggle's dataset card if used in any customer-facing analysis later.
+
+**Date column investigation:** review_creation_date always shows time as
+00:00:00 for 99,139 of 99,224 rows (99.9%) -- it's really a DATE with a
+zeroed-out time placeholder, not a genuine timestamp. The 85 exceptions
+all show 01:00:00 instead, and are entirely explained by Brazilian DST:
+the two unique exception values are "2017-10-15 01:00:00" and
+"2016-10-16 01:00:00" -- exactly matching Brazil's historical DST start
+dates (third Sunday of October) in those two years. Timezone artifact
+from the source system, not meaningful data. No special handling needed
+at load -- truncating to DATE (dropping time) resolves it naturally.
+
+review_answer_timestamp, by contrast, has genuine varying times of day
+throughout -- a real timestamp, should load as full DATETIME.
+
+**Keys:** order_id.nunique() = 98,673, LESS than row count (99,224) --
+confirms some orders have more than one review.
+
+**Multi-review orders investigation:** 547 orders have more than one
+review (543 with exactly 2, 4 with exactly 3) -- reconciles exactly with
+the earlier order_id.nunique() gap (99,224 - 98,673 = 551 extra rows).
+
+Checked 4 real examples -- NOT one single explanation, genuinely mixed:
+- Some are real follow-up reviews with a DIFFERENT score days apart
+  (e.g. 5 -> 4 over 10 days) -- opinion changed.
+- At least one looks like a straight technical duplicate: identical
+  score, identical creation date, answer timestamps only 41 seconds
+  apart -- likely a double-submission bug, not two real reviews.
+- At least one shows a genuinely evolving complaint: score got WORSE
+  over time (3 -> 1) with different complaint text each time, one
+  mentioning a delivery issue -- looks like a real escalating situation.
+
+**SCHEMA IMPLICATIONS:**
+- Don't assume "latest review" or "first review" is always the "correct"
+  one to keep for a dim/fact design -- the reasons for multiple reviews
+  vary (duplicate vs. genuine follow-up), so any decision to collapse to
+  one review per order needs a documented rule (e.g. "keep most recent")
+  while acknowledging it may discard a meaningful earlier complaint in
+  some cases.
+- review_creation_date should load as DATE (not datetime) -- the time
+  portion is a placeholder/DST artifact, never meaningful.
+- review_answer_timestamp should load as full DATETIME -- genuine
+  time-of-day information.
