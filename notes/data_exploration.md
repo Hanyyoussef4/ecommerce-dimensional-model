@@ -218,6 +218,10 @@ dates (third Sunday of October) in those two years. Timezone artifact
 from the source system, not meaningful data. No special handling needed
 at load -- truncating to DATE (dropping time) resolves it naturally.
 
+Exact breakdown of the 85 exceptions: 2017-10-15 01:00:00 -> 84 rows,
+2016-10-16 01:00:00 -> 1 row. Heavily concentrated on the 2017 DST
+transition, not evenly split across both years.
+
 review_answer_timestamp, by contrast, has genuine varying times of day
 throughout -- a real timestamp, should load as full DATETIME.
 

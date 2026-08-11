@@ -12,6 +12,7 @@ print((df['review_creation_date'].str.endswith('00:00:00')).sum())
 print(df[~df['review_creation_date'].str.endswith('00:00:00')])
 print(df[~df['review_creation_date'].str.endswith('00:00:00')]['review_creation_date'].nunique())
 print(df[~df['review_creation_date'].str.endswith('00:00:00')]['review_creation_date'].unique())
+print(df[~df['review_creation_date'].str.endswith('00:00:00')]['review_creation_date'].value_counts())
 cnt_rws=df.groupby('order_id').size() ##count_rows_that has same order ID
 multi= cnt_rws[cnt_rws > 1] ##filter result to include only orders with more then one row (multi reviews)
 print(multi.value_counts())
