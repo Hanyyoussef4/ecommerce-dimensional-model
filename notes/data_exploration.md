@@ -253,3 +253,85 @@ Checked 4 real examples -- NOT one single explanation, genuinely mixed:
   portion is a placeholder/DST artifact, never meaningful.
 - review_answer_timestamp should load as full DATETIME -- genuine
   time-of-day information.
+
+---
+  
+  ## olist_products_dataset.csv
+
+**Shape:** 32,951 rows, 9 columns
+
+**Dtypes:** product_id and product_category_name are str. All other
+columns (product_name_lenght, product_description_lenght,
+product_photos_qty, product_weight_g, product_length_cm,
+product_height_cm, product_width_cm) are float64.
+
+**Null investigation:** 610 rows missing product_category_name are
+PERFECTLY correlated with also missing product_name_lenght,
+product_description_lenght, and product_photos_qty (all exactly 610) --
+these look like incomplete product listings where the seller never
+filled in any descriptive fields, not independent random gaps.
+
+Separately, only 2 rows total are missing dimension fields (weight/
+length/height/width):
+- Row "5eb564652db742ff8f28759cd8d2652a" is part of the 610-row
+  incomplete-listing cluster (everything null).
+- Row "09ff539a621711667c43eba6a3bd8466" is an ISOLATED case -- has a
+  completely normal category ("bebes"), name_length, and
+  description_length filled in, but is missing all 4 dimension fields.
+  A separate, unrelated data gap on an otherwise complete listing.
+
+**Category name investigation:** 73 unique categories confirmed genuine
+(nunique matches before/after .str.strip().str.lower(), no hidden
+spacing/casing duplicates). Checked the 5 rare categories (<=5 products
+each: cds_dvds_musicais, seguros_e_servicos, pc_gamer,
+fashion_roupa_infanto_juvenil, casa_conforto_2) directly -- all look
+like legitimate distinct categories.
+
+FOUND (via regex sweep for names ending in "_<digit>"): TWO pairs of
+near-duplicate categories exist in the source data:
+- "casa_conforto" (111 products) and "casa_conforto_2" (5 products)
+- "eletrodomesticos" (370 products) and "eletrodomesticos_2" (90 products)
+Confirmed via .str.contains(regex) + value_counts(). Not formatting
+glitches -- genuinely separate category strings, likely representing the
+same or overlapping real-world category. This looks like a recurring
+naming pattern in Olist's category taxonomy, not a one-off anomaly.
+
+**product_weight_g outlier investigation (via describe(), min=0):**
+Exactly 4 rows have weight=0, ALL in the same category "cama_mesa_banho"
+(bed/table/bath). NOT part of the 610-row incomplete-listing cluster --
+these are otherwise complete records: dimensions (30x25x30cm), name_length,
+description_length, photos_qty all populated normally. Only weight is
+impossible (0g for a physical product). Clustering in a single category
+suggests a systematic data entry issue (e.g. one seller/batch upload for
+this category), not random scattered bad data.
+
+**product_photos_qty outlier investigation (via describe(), max=20 vs
+75th percentile=3 overall):** MIXED finding, not one clean explanation --
+- pet_shop shows a genuine category-wide pattern: MANY different
+  products in this category have 15-18 photos.
+- brinquedos: real WITHIN-CATEGORY outlier. Scoped describe() (1,411
+  products) shows mean=2.46, 75th percentile=3, but this one product
+  has 20 photos.
+- bebes: same pattern. Scoped describe() (919 products) shows mean=2.35,
+  75th percentile=3, but one product has 19 photos.
+- NOTABLE: the brinquedos and bebes outlier products have IDENTICAL
+  weight (8900g) and dimensions (32x49x34cm), and near-identical
+  name/description lengths, despite different product_ids and
+  categories -- possibly the same physical item listed under two
+  different categorizations by different sellers. Not fully chased
+  down, worth remembering.
+
+Lesson: don't generalize "high value belongs to category X, therefore
+X explains high values" from a mixed list without checking each
+category's own distribution individually -- verify per-category, not
+just from a mixed overall list.
+
+**SCHEMA IMPLICATIONS:**
+- dim_products: decide whether to merge casa_conforto/casa_conforto_2
+  and eletrodomesticos/eletrodomesticos_2 pairs, or preserve as-is per
+  source data. Check for similar patterns before finalizing.
+- The 610 no-category products need a decision: exclude, or bucket as
+  "uncategorized"/"unknown."
+- The 4 weight=0 rows will break freight/shipping calculations if
+  joined with order_items -- decide: exclude, impute category-average
+  weight, or flag with a data-quality indicator.
