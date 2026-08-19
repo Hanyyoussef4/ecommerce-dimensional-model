@@ -335,3 +335,97 @@ just from a mixed overall list.
 - The 4 weight=0 rows will break freight/shipping calculations if
   joined with order_items -- decide: exclude, impute category-average
   weight, or flag with a data-quality indicator.
+
+  ## olist_sellers_dataset.csv
+
+**Shape:** 3,095 rows, 4 columns
+
+**Dtypes:** seller_id, seller_city, seller_state are str.
+seller_zip_code_prefix is int64.
+
+**Nulls/duplicates:** 0 nulls across all columns, 0 duplicate rows.
+
+**seller_city / seller_state uniqueness:** 611 unique cities, 23 unique
+states -- confirmed genuine via two independent methods (direct
+.nunique(), and value_counts().index.nunique()), both before and after
+.str.strip().str.lower() normalization. No hidden whitespace/casing
+duplicates at the surface level (real issues found below are NOT
+whitespace/casing -- they're typos, formatting, and outright bad values).
+
+**seller_state distribution (groupby.size(), sorted):** heavily skewed --
+SP alone has 1,849 of 3,095 total sellers (~60%). Long tail down to
+several states with just 1 seller each (AC, PI, MA, PA, AM). Only 23 of
+Brazil's 27 states/federal district appear at all -- some states have
+zero sellers in this dataset, which is real, not missing data.
+
+**seller_city data quality investigation (major finding):** Cross-checked
+via seller_zip_code_prefix -- 34 zip prefixes have more than one distinct
+seller_city value attached. Investigated ALL 34 directly (not a sample).
+Full flagged dataset exported to notes/seller_city_anomalies.csv (112
+rows) for reference during schema-building/cleaning.
+
+NOT legitimate zip-boundary overlap in most cases -- found multiple
+distinct categories of real data quality issues:
+
+- **Simple misspellings** (10 pairs): garulhos/guarulhos, mogi das
+  cruses/mogi das cruzes, sando andre/santo andre, sao bernardo do
+  campo/sao bernardo do capo, scao jose do rio pardo/sao jose do rio
+  pardo, robeirao preto/ribeirao preto, riberao preto/ribeirao preto,
+  belo horizont/belo horizonte, cascavael/cascavel, floranopolis/
+  florianopolis, balenario camboriu/balneario camboriu.
+- **Missing space:** portoferreira vs porto ferreira.
+- **Apostrophe/punctuation variants:** santa barbara d oeste vs santa
+  barbara d'oeste; sao miguel d'oeste vs sao miguel do oeste.
+- **Full state name used as a city name** (3 instances): "santa
+  catarina" (zip 88135), "minas gerais" (zip 37165), "parana" (zip 87083).
+- **Email address as city:** vendas@creditparts.com.br (zip 87025).
+- **Zip code number as city:** "04482255" (zip 22790).
+- **Malformed/duplicated concatenations** (15 total, found via
+  .str.contains('/') across the FULL column, not just the 34 flagged
+  zips): self-duplicates like "sao paulo / sao paulo", "sp / sp", "rio
+  de janeiro / rio de janeiro"; city-slash-state combos like
+  "auriflama/sp", "sbc/sp", "pinhais/pr", "barbacena/ minas gerais";
+  city-slash-city combos like "santo andre/sao paulo", "mogi das cruzes
+  / sp", "carapicuiba / sao paulo", "jacarei / sao paulo", "sao
+  sebastiao da grama/sp", "cariacica / es", "ribeirao preto / sao
+  paulo", "maua/sao paulo".
+- **Dash-separated state suffix** (4 total, via .str.contains(' - ')):
+  "lages - sc", "sao paulo - sp" (x3).
+- **State mismatch (different bug -- wrong seller_state, not just
+  city):** zip 88075 has one row with city "florianopolis" but state
+  "SP", while another row at the same zip has city "sao jose" with
+  state "SC". Florianopolis is a well-known real city in Santa Catarina,
+  so SP here is very likely a wrong seller_state value, not just a
+  messy city string.
+- **Possibly legitimate, NOT errors** -- genuinely different real city
+  names sharing a zip prefix, may reflect real geographic zip-boundary
+  overlap: sao caetano do sul/sao paulo (zip 9560), jaguariuna/monte
+  alegre do sul (zip 13820), laranjal paulista/tatui (zip 18500).
+  Worth a second look, cities are geographically far apart (more likely
+  real errors than boundary overlap): mage/rio de janeiro (zip 25900),
+  campos dos goytacazes/rio de janeiro (zip 28035), santa rita do
+  sapucai/sao paulo (zip 37540, MG vs SP -- large distance).
+
+**Methodological insight:** the zip-cross-check technique only catches
+INCONSISTENCY (same zip, disagreeing city values). A zip prefix where
+every seller was entered with the same messy format consistently (e.g.
+always "city / state") would NOT be flagged by this method, since
+there'd be no disagreement to detect. This is why the standalone regex
+sweeps (digit, slash, dash) mattered -- they scan the whole column
+independent of zip grouping, catching format issues even when a zip's
+rows are internally consistent with each other.
+
+**SCHEMA IMPLICATIONS:**
+- seller_city cannot be trusted as-is for dim_sellers. This is a
+  genuine, non-trivial cleaning problem (112+ flagged rows across many
+  distinct failure types), not a couple of stray values.
+- Recommend a systematic cleaning approach for schema-building phase:
+  cross-reference seller_city against a canonical Brazilian city list
+  (e.g. IBGE municipality list) rather than manual pattern-matching,
+  given how many different failure types exist.
+- seller_state may also have at least 1 confirmed wrong value (the
+  florianopolis/SP mismatch) -- don't assume seller_state is fully
+  reliable either, though it appears far less affected than seller_city.
+- seller_zip_code_prefix itself looks structurally reliable; the data
+  quality problem is isolated to the free-text seller_city (and
+  occasionally seller_state) fields.

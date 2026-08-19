@@ -1,34 +1,28 @@
 import pandas as pd
-df = pd.read_csv('raw_csv/olist_products_dataset.csv')
+pd.set_option('display.max_rows', None)
+
+df = pd.read_csv('raw_csv/olist_sellers_dataset.csv')
 print(df.head())
+print(df.sample(5))
 print(df.shape)
 print(df.dtypes)
-print(df.groupby('product_category_name')['product_id'].count())
-print(df.groupby('product_category_name')['product_id'].count().sum())
-print(df['product_category_name'].isnull().sum())
-print(df.shape[0] - df['product_category_name'].isnull().sum())
-print(df[df['product_category_name'].isnull()].isnull().sum())
+print(df.duplicated().sum())
 print(df.isnull().sum())
-print(df[df['product_length_cm'].isnull()]) # find the 2 product taht does not have product dimension values "this approach captures the two rows with Prd_id and doesnt have prd dimensions"
-print(df[df['product_weight_g'].isnull() & df['product_category_name'].notnull()]) # this approach to find the one raw has NaN product dimension and is not part of the Nan prodcut category
-print(df['product_category_name'].nunique()) # this line -14 and the line-15 after are confirming that no formatting issues in the product_category_name field and it is really 73 unique values
-print(df['product_category_name'].str.strip().str.lower().nunique())
+print(df['seller_city'].nunique())
+print(df['seller_city'].str.strip().nunique())
+print(df['seller_state'].nunique())
+print(df['seller_state'].str.strip().nunique())
+print(df.groupby('seller_state').size().sort_values())
 
-## adding variables
-cnt_rws = df.groupby('product_category_name')['product_id'].size().sort_values() #creating the groupby series for a data heathcheck 
-multi = cnt_rws[cnt_rws <=5] #filter the series to show only product_category_name less/equal 5 orders
-print(multi)
+cnt_rws = df.groupby('seller_zip_code_prefix')['seller_city'].nunique().sort_values(ascending=False)
+print(cnt_rws[cnt_rws > 1])
+print(cnt_rws[cnt_rws > 1].count())
+print(df[df['seller_city'].str.contains('@')])
+print(df[df['seller_city'] == 'santa catarina'])
+example1 = cnt_rws[cnt_rws > 1].index
+print(df[df['seller_zip_code_prefix'].isin(example1)].sort_values(['seller_zip_code_prefix', 'seller_city']))
+print(df[df['seller_city'].str.contains(r'\d', na=False, regex=True)])  # digits in a city name -- catches things like "04482255"
+print(df[df['seller_city'].str.contains('/', na=False)])                # slash -- catches concatenated entries like "ribeirao preto / sao paulo"
+print(df[df['seller_city'].str.contains(' - ', na=False)])               # dash with spaces -- catches things like "lages - sc"
 
-for cat in multi.index:
-    print(df[df['product_category_name'] == cat])
-
-print(df[df['product_category_name'].str.contains(r'_\d$', na=False, regex=True)]['product_category_name'].unique())
-print(df[df['product_category_name'].str.contains('casa_conforto',na = False)]['product_category_name'].value_counts())
-print(df[df['product_category_name'].str.contains('eletrodomesticos',na = False)]['product_category_name'].value_counts())
-print(df.describe())
-print(df[df['product_weight_g'] == 0])
-print(df[df['product_photos_qty'] == 20])
-cnt_phts = df[df['product_photos_qty'] >= 15]
-print(cnt_phts.sort_values(['product_category_name','product_photos_qty']))
-print(df[df['product_category_name'] == 'brinquedos']['product_photos_qty'].describe())
-print(df[df['product_category_name'] == 'bebes']['product_photos_qty'].describe())
+df[df['seller_zip_code_prefix'].isin(example1)].sort_values(['seller_zip_code_prefix', 'seller_city']).to_csv('notes/seller_city_anomalies.csv', index=False)
