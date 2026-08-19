@@ -429,3 +429,55 @@ rows are internally consistent with each other.
 - seller_zip_code_prefix itself looks structurally reliable; the data
   quality problem is isolated to the free-text seller_city (and
   occasionally seller_state) fields.
+
+  ## olist_geolocation_dataset.csv
+
+**Shape:** 1,000,163 rows, 5 columns
+
+**Dtypes:** geolocation_zip_code_prefix is int64. geolocation_lat and
+geolocation_lng are float64. geolocation_city and geolocation_state
+are str.
+
+**Nulls:** 0 across all columns.
+
+**Duplicates:** 261,831 EXACT duplicate rows (~26% of the file) --
+identical zip, lat/lng, city, and state. Simple .drop_duplicates()
+resolves this, no interpretation needed (unlike sellers' messy data).
+Deduplicated dataset (738,332 rows) exported to
+notes/geolocation_deduplicated.csv for reference.
+
+**Grain:** 19,015 unique zip prefixes across 1,000,163 rows (~52 rows
+per prefix on average). Many lat/long geocode points exist per zip
+area -- this table needs aggregation (e.g. average lat/lng per prefix)
+before use as a clean geo lookup, not usable as raw rows.
+
+**geolocation_zip_code_prefix range check (describe()):** min 1,001,
+max 99,990 -- fully within the plausible 5-digit Brazilian CEP range.
+No structural issues.
+
+**geolocation_state:** exactly 27 unique values, ALL valid 2-letter
+Brazilian state codes (confirmed via sorted unique list). Clean,
+no contamination -- unlike seller_state, no issues found here.
+
+**geolocation_city investigation:** 8,011 raw unique values -- too
+large to catalog individually like sellers' 611. Checked accent-mark
+normalization (unicodedata NFD decomposition + lowercase + strip):
+count drops to 5,968 (~25.5% reduction). Confirms a large portion of
+the raw "distinctness" was accent/casing/whitespace noise (e.g. "sao
+paulo" vs "são paulo" counted as 2 different cities), not genuine city
+variety. Full raw unique city list exported to
+notes/geolocation_unique_cities.csv (8,011 rows) for reference. Remaining
+~5,968 likely still contains some real typos (similar to sellers), but
+full manual cataloging wasn't pursued given this table's primary value
+is lat/lng coordinates, not the city/state text, and it requires
+aggregation regardless.
+
+**SCHEMA IMPLICATIONS:**
+- This table must be aggregated (drop exact duplicates, likely average
+  lat/lng per zip_code_prefix) before use in a geo dimension -- not
+  usable as raw rows.
+- If geolocation_city is ever used directly (not just for reference),
+  apply accent/case/whitespace normalization first -- this alone
+  resolves ~25% of apparent inconsistency cheaply.
+- geolocation_state and geolocation_zip_code_prefix are both clean and
+  reliable as-is.
