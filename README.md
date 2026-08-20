@@ -135,7 +135,10 @@ follow the pipeline steps below as they're completed.
 - **2026-08-19** — Data exploration phase complete: all 9 raw CSVs
   fully profiled and documented, including systematic data quality
   investigation (see `notes/data_exploration.md`).
-- *(upcoming)* Postgres database created, raw data loaded to staging.
+- **2026-08-20** — `ecommerce_dw` Postgres database created via
+  `scripts/create_database.py` (psycopg2, autocommit mode, existence
+  check to keep the script idempotent).
+- *(upcoming)* Raw CSVs loaded to Postgres staging tables.
 - *(upcoming)* Star schema designed and built in SQL.
 - *(upcoming)* Checkpoint queries written; project finalized.
 
@@ -144,7 +147,7 @@ follow the pipeline steps below as they're completed.
 - [x] Project scaffolded (venv, git, requirements.txt)
 - [x] Raw CSVs explored, data quality findings documented
       (`notes/data_exploration.md`)
-- [ ] `ecommerce_dw` database created
+- [x] `ecommerce_dw` database created
 - [ ] Raw CSVs loaded to Postgres staging tables
 - [ ] Star schema designed
 - [ ] Dimension tables built (SQL)
