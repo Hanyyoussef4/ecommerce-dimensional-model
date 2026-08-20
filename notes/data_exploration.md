@@ -335,8 +335,9 @@ just from a mixed overall list.
 - The 4 weight=0 rows will break freight/shipping calculations if
   joined with order_items -- decide: exclude, impute category-average
   weight, or flag with a data-quality indicator.
+---
 
-  ## olist_sellers_dataset.csv
+## olist_sellers_dataset.csv
 
 **Shape:** 3,095 rows, 4 columns
 
@@ -429,8 +430,9 @@ rows are internally consistent with each other.
 - seller_zip_code_prefix itself looks structurally reliable; the data
   quality problem is isolated to the free-text seller_city (and
   occasionally seller_state) fields.
+---
 
-  ## olist_geolocation_dataset.csv
+## olist_geolocation_dataset.csv
 
 **Shape:** 1,000,163 rows, 5 columns
 
@@ -481,3 +483,41 @@ aggregation regardless.
   resolves ~25% of apparent inconsistency cheaply.
 - geolocation_state and geolocation_zip_code_prefix are both clean and
   reliable as-is.
+---
+
+## product_category_name_translation.csv
+
+**Shape:** 71 rows, 2 columns
+
+**Dtypes:** product_category_name and product_category_name_english
+both str.
+
+**Nulls/duplicates:** 0 nulls, 0 duplicate rows. Every category has
+exactly 1 translation entry (confirmed via groupby -- no internal
+duplicates).
+
+**Coverage check against olist_products_dataset.csv:** products file
+has 73 distinct categories, this table has only 71 -- a gap of 2.
+Initially guessed the gap was casa_conforto_2/eletrodomesticos_2 (the
+duplicate-pair categories found in products) -- WRONG, both of those
+ARE present here with their own translations (home_comfort_2,
+home_appliances_2). Confirmed via set difference
+(products_categories - translation_categories) the actual 2 missing
+categories are: "pc_gamer" and
+"portateis_cozinha_e_preparadores_de_alimentos".
+
+**Verified NOT a language-mixing issue:** tested whether the 2 missing
+categories might actually be English names mistakenly stored in the
+Portuguese product_category_name column of the products file (i.e.
+some products using English category names inconsistently). Compared
+products_categories against translation_categories2 (the ENGLISH
+column of this table) -- both categories still fail to match here too,
+confirming they are genuinely absent from the translation table
+entirely, not a language-inconsistency artifact.
+
+**SCHEMA IMPLICATION:** joining products to this table on
+product_category_name will produce a NULL/missing English category
+name for any product in these 2 categories (pc_gamer,
+portateis_cozinha_e_preparadores_de_alimentos). Decide at schema-build
+time: add manual translation rows for these 2, or handle as
+"uncategorized"/fallback in the join.
