@@ -138,7 +138,11 @@ follow the pipeline steps below as they're completed.
 - **2026-08-20** — `ecommerce_dw` Postgres database created via
   `scripts/create_database.py` (psycopg2, autocommit mode, existence
   check to keep the script idempotent).
-- *(upcoming)* Raw CSVs loaded to Postgres staging tables.
+- **2026-08-20** — All 9 raw CSVs loaded into Postgres staging tables
+  via `scripts/load_raw_to_postgres.py` (SQLAlchemy, `pandas.to_sql()`),
+  with every table verified against its source CSV via a per-table
+  row-count check (CSV count vs `SELECT COUNT(*)`) — all 9 matched
+  exactly.
 - *(upcoming)* Star schema designed and built in SQL.
 - *(upcoming)* Checkpoint queries written; project finalized.
 
@@ -148,7 +152,7 @@ follow the pipeline steps below as they're completed.
 - [x] Raw CSVs explored, data quality findings documented
       (`notes/data_exploration.md`)
 - [x] `ecommerce_dw` database created
-- [ ] Raw CSVs loaded to Postgres staging tables
+- [x] Raw CSVs loaded to Postgres staging tables
 - [ ] Star schema designed
 - [ ] Dimension tables built (SQL)
 - [ ] Fact table built (SQL)
