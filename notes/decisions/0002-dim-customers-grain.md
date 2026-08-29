@@ -66,6 +66,27 @@ Reasons:
   has raw rows (99,441), since multiple `customer_id` values collapse
   into one `customer_unique_id` row. Attributes that vary per-order in
   `stg_customers` (e.g. `customer_zip_code_prefix`, if a person moved
-  between orders) will need a documented rule for which value "wins"
-  when collapsing to one row per person — not yet resolved, tracked as
-  a follow-up when `dim_customers`' full column list is designed.
+  between orders) need a documented rule for which value "wins" when
+  collapsing to one row per person.
+
+### Address collapse rule (resolved 2026-08-29)
+
+Verified against the real data before deciding: out of 96,096 unique
+`customer_unique_id` values, 250 (~0.26%) have more than one
+`customer_zip_code_prefix` across their orders, 122 (~0.13%) have more
+than one `customer_city`, and 39 (~0.04%) have more than one
+`customer_state`. All small — this affects a negligible fraction of
+customers regardless of which rule is chosen.
+
+This is an instance of a well-known problem in dimensional modeling —
+a **Slowly Changing Dimension (SCD)**: an attribute of a real-world
+entity (a person's address) changing over time. The simplest standard
+strategy, **SCD Type 1**, is to overwrite with the most recent value
+rather than preserve history. Given how small the affected population
+is here, preserving full address history (SCD Type 2, which would
+require effective-dated rows) isn't justified — **decision: use the
+most recent order's address** (`customer_zip_code_prefix`,
+`customer_city`, `customer_state` from the row associated with the
+person's latest order, resolved via a join to `stg_orders` on
+`order_purchase_timestamp`) for the small number of people who have
+more than one address on file.
