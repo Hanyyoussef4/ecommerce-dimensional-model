@@ -143,7 +143,12 @@ follow the pipeline steps below as they're completed.
   with every table verified against its source CSV via a per-table
   row-count check (CSV count vs `SELECT COUNT(*)`) — all 9 matched
   exactly.
-- *(upcoming)* Star schema designed and built in SQL.
+- **2026-08-29/30** — Star schema design in progress: `fact_orders`,
+  `dim_customers`, and `dim_products` fully designed (grain, keys,
+  columns) and documented via ADRs in `notes/decisions/` and
+  `notes/schema_design.md`. `dim_sellers`, `dim_geolocation`, and
+  `dim_date` still to be designed.
+- *(upcoming)* Star schema design completed; dims + fact built in SQL.
 - *(upcoming)* Checkpoint queries written; project finalized.
 
 ## Status
