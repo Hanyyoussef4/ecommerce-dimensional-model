@@ -112,6 +112,14 @@ translations (`pc_gamer`,
 fallback (e.g. keep Portuguese name if no translation exists, rather
 than a null English column).
 
+**Missing category placeholder (resolved):** 610 products are missing
+`product_category_name` entirely — verified (two independent checks)
+that all 610 have real purchases in `stg_order_items`, so they cannot
+be excluded from `dim_products`. Both `product_category_name` and
+`product_category_name_english` are replaced with the literal string
+`'not specified'` for these rows rather than left `NULL`. See
+[ADR 0004](decisions/0004-dim-products-missing-category-placeholder.md).
+
 ## dim_sellers
 
 *(Not yet designed — includes known cleanup needed from exploration:
