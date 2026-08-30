@@ -57,7 +57,20 @@ beyond the aggregated score/date measures above.
 **Grain:** one row per real person (`customer_unique_id`), not one row
 per order-instance. See [ADR 0002](decisions/0002-dim-customers-grain.md).
 
-*(Column list — TBD, not yet designed.)*
+**Primary key:** `customer_key` (surrogate, auto-generated integer —
+not present in source data). Used instead of `customer_unique_id`
+directly as the key that `fact_orders` references, since a dimension
+key gets copied into every fact row that points to it (fan-out) — a
+small integer is far cheaper to store/join at that scale than a
+32-character hash repeated across thousands of `fact_orders` rows.
+
+| Column | Source | Notes |
+|---|---|---|
+| `customer_key` | generated | surrogate PK, referenced by `fact_orders` |
+| `customer_unique_id` | `stg_customers` | natural/business key, kept as a traceable attribute |
+| `customer_city` | `stg_customers` | from the person's most recent order — see ADR 0002 address collapse rule (SCD Type 1) |
+| `customer_state` | `stg_customers` | from the person's most recent order — see ADR 0002 |
+| `customer_zip_code_prefix` | `stg_customers` | from the person's most recent order — see ADR 0002 |
 
 ## dim_products
 
