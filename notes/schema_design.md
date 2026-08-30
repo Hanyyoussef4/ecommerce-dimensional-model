@@ -17,9 +17,9 @@ one product within one order). See
 
 | Column | References | Notes |
 |---|---|---|
-| `product_id` | `dim_products` | direct from `stg_order_items` |
-| `seller_id` | `dim_sellers` | direct from `stg_order_items` |
-| `customer_unique_id` | `dim_customers` | resolved via join through `stg_customers` on `customer_id` — not a direct pass-through. See [ADR 0002](decisions/0002-dim-customers-grain.md). |
+| `product_key` | `dim_products` | surrogate key, resolved by looking up `product_id` (from `stg_order_items`) against `dim_products` — `product_id` itself does not travel into `fact_orders`. Same fan-out reasoning as `customer_key` below. |
+| `seller_key` | `dim_sellers` | surrogate key, resolved by looking up `seller_id` (from `stg_order_items`) against `dim_sellers` — `seller_id` itself does not travel into `fact_orders`. Same fan-out reasoning as `customer_key` below. |
+| `customer_key` | `dim_customers` | surrogate key, resolved via join through `stg_customers` (`customer_id` → `customer_unique_id`) then looked up against `dim_customers` — not a direct pass-through of any raw column. See [ADR 0002](decisions/0002-dim-customers-grain.md). |
 | `purchase_date_key` | `dim_date` | role-playing date FK |
 | `approved_date_key` | `dim_date` | role-playing date FK |
 | `delivered_carrier_date_key` | `dim_date` | role-playing date FK |
@@ -74,10 +74,43 @@ small integer is far cheaper to store/join at that scale than a
 
 ## dim_products
 
-*(Not yet designed — includes known cleanup needed from exploration:
-near-duplicate category pairs `casa_conforto`/`casa_conforto_2`,
-`eletrodomesticos`/`eletrodomesticos_2`; 2 categories missing English
-translations.)*
+**Grain:** one row per product (`product_id` unique in `stg_products`,
+32,951 rows = 32,951 distinct `product_id` — confirmed). 73 distinct
+categories; no readable product name exists in the source data
+(`product_name_lenght` is a character count of the name, not the name
+itself).
+
+**Referential integrity verified:** 0 `product_id` values in
+`stg_order_items` are missing from `stg_products` (checked via
+`LEFT JOIN` + `WHERE ... IS NULL`) — safe to join without risk of
+silently dropped or null line items.
+
+**Primary key:** `product_key` (surrogate, auto-generated integer).
+Same fan-out reasoning as `dim_customers`' `customer_key` —
+`product_id` is a long hash-format string that would otherwise be
+copied into every `fact_orders` row referencing that product.
+
+| Column | Source | Notes |
+|---|---|---|
+| `product_key` | generated | surrogate PK, referenced by `fact_orders` |
+| `product_id` | `stg_products` | natural/business key, kept as a traceable attribute |
+| `product_category_name` | `stg_products` | Portuguese category name; known data quality issues not yet cleaned here — see below |
+| `product_category_name_english` | `stg_product_category_translation`, joined on category name | denormalized directly in rather than a separate dimension — translation table is small (2 columns) and has no other attributes, so a separate table would just add an unnecessary join (snowflaking) for no real benefit |
+| `product_name_lenght` | `stg_products` | character count of the (unstored) product name |
+| `product_description_lenght` | `stg_products` | character count of the description |
+| `product_photos_qty` | `stg_products` | |
+| `product_weight_g` | `stg_products` | |
+| `product_length_cm` | `stg_products` | |
+| `product_height_cm` | `stg_products` | |
+| `product_width_cm` | `stg_products` | |
+
+**Known cleanup needed (handled in SQL transform, not here):**
+near-duplicate category pairs (`casa_conforto`/`casa_conforto_2`,
+`eletrodomesticos`/`eletrodomesticos_2`); 2 categories missing English
+translations (`pc_gamer`,
+`portateis_cozinha_e_preparadores_de_alimentos`) — need a documented
+fallback (e.g. keep Portuguese name if no translation exists, rather
+than a null English column).
 
 ## dim_sellers
 
