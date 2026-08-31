@@ -153,10 +153,65 @@ a manual correction seed table, not yet built.
 
 ## dim_geolocation
 
-*(Not yet designed — includes known cleanup needed from exploration:
-261,831 exact duplicate rows, city name accent/casing normalization.
-Connects to `dim_customers`/`dim_sellers`, not directly to
-`fact_orders`.)*
+**Grain:** one row per `zip_code_prefix` (aggregated from `stg_geolocation`,
+which has many raw rows per zip — repeated/near-duplicate lat/lng
+readings, not one row per zip).
+
+**Primary key:** `zip_code_prefix` (natural key) — no surrogate key.
+Unlike `dim_customers`/`dim_products`/`dim_sellers`, `zip_code_prefix`
+is already short and cheap to store/join directly, so the fan-out cost
+that justifies a surrogate key elsewhere doesn't apply here. Stored as
+`TEXT`, not numeric — see [ADR 0006](decisions/0006-zip-code-leading-zero-fix.md).
+
+Connects to `dim_customers`/`dim_sellers` via `zip_code_prefix`, not
+directly to `fact_orders`.
+
+| Column | Source | Notes |
+|---|---|---|
+| `zip_code_prefix` | `stg_geolocation` | natural key, grain of this table |
+| `latitude` | `stg_geolocation`, `AVG(geolocation_lat)` per zip | multiple raw readings per zip collapsed to one representative point |
+| `longitude` | `stg_geolocation`, `AVG(geolocation_lng)` per zip | same as above |
+| `city` | `stg_geolocation`, `MODE() WITHIN GROUP` per zip, after accent/casing normalization | most common city name per zip once accent/casing noise is normalized (e.g. "sao paulo" vs "são paulo") — see known cleanup below |
+| `state` | `stg_geolocation`, `MODE() WITHIN GROUP` per zip | most common state per zip |
+
+**Known cleanup needed (handled in SQL transform, not here):**
+261,831 exact duplicate rows in `stg_geolocation`, and city name
+accent-mark/casing normalization (~25% of apparent city-name variety
+in the raw data is noise, not real distinct values — see
+`notes/data_exploration.md`) needed before `MODE()` can pick a
+meaningful most-common city per zip.
+
+**Referential integrity gap (documented, not an ADR — see reasoning
+below):** `stg_geolocation`'s zip coverage is incomplete relative to
+`stg_customers`/`stg_sellers`. Checked both directions via
+`LEFT JOIN` + `WHERE geolocation_state IS NULL`:
+
+- `stg_customers`: 278 of 99,441 rows (157 distinct zip prefixes) have
+  no matching `zip_code_prefix` in `stg_geolocation`.
+- `stg_sellers`: 7 of 3,095 rows (7 distinct zip prefixes) have no
+  match.
+
+Confirmed this is a coverage gap, not a data quality bug — the
+missing zips belong to real, legitimate cities (e.g. Brasília, Sinop,
+Teresina, Poços de Caldas, Curitiba, Porto Alegre, São Paulo, Arujá).
+`stg_geolocation` is Olist's standalone zip-to-coordinates reference
+table (released to support mapping/distance calculations), not
+derived from the orders data itself, so it isn't guaranteed to cover
+every zip that happens to appear in this specific dataset.
+
+Low impact either way: `dim_customers`/`dim_sellers` already carry
+their own `city`/`state`/`zip_code_prefix` directly from
+`stg_customers`/`stg_sellers`, so this gap only affects `latitude`/
+`longitude` enrichment for the affected rows, not city/state itself.
+
+**Decision:** any join from `dim_customers`/`dim_sellers` to
+`dim_geolocation` must use `LEFT JOIN`, leaving `latitude`/`longitude`
+`NULL` for unmatched rows rather than dropping those customers/sellers
+from the result or fabricating approximate coordinates (e.g. a
+state-level centroid). Kept as a documented note rather than a
+standalone ADR — the reasoning is non-obvious from the code alone, but
+the decision itself is low-blast-radius and cheap to reverse (a single
+join clause), unlike grain or key-strategy decisions.
 
 ## dim_date
 
