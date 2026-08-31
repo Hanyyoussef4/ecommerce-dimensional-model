@@ -122,9 +122,34 @@ be excluded from `dim_products`. Both `product_category_name` and
 
 ## dim_sellers
 
-*(Not yet designed — includes known cleanup needed from exploration:
-`seller_city` data quality issues across 34 zip prefixes, see
-`notes/seller_city_anomalies.csv`.)*
+**Grain:** one row per seller (`seller_id` unique in `stg_sellers`,
+3,095 rows = 3,095 distinct `seller_id` — confirmed). No second
+identifier column exists (unlike `stg_customers`) — `seller_id` is
+the only key this table has.
+
+**Referential integrity verified (both directions):** every seller in
+`stg_sellers` has sold at least one item, and every `seller_id`
+referenced in `stg_order_items` exists in `stg_sellers` — zero
+orphaned rows either way.
+
+**Primary key:** `seller_key` (surrogate, auto-generated integer).
+Same fan-out reasoning as `dim_customers`'/`dim_products`' surrogate
+keys — `seller_id` is a long hash-format string that would otherwise
+be copied into every `fact_orders` row referencing that seller.
+
+| Column | Source | Notes |
+|---|---|---|
+| `seller_key` | generated | surrogate PK, referenced by `fact_orders` |
+| `seller_id` | `stg_sellers` | natural/business key, kept as a traceable attribute |
+| `seller_city` | `stg_sellers`, corrected via seed table | see [ADR 0005](decisions/0005-dim-sellers-city-cleanup.md) |
+| `seller_state` | `stg_sellers` | |
+| `seller_zip_code_prefix` | `stg_sellers` | |
+
+**Known cleanup needed (handled in SQL transform, not here):**
+`seller_city` data quality issues across 34 zip prefixes (112 of 3,095
+sellers), see `notes/seller_city_anomalies.csv` and
+[ADR 0005](decisions/0005-dim-sellers-city-cleanup.md) — resolved via
+a manual correction seed table, not yet built.
 
 ## dim_geolocation
 
