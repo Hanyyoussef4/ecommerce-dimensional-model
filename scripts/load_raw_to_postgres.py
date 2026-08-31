@@ -14,9 +14,18 @@ files ={
     "olist_geolocation_dataset.csv": "stg_geolocation",
     "product_category_name_translation.csv": "stg_product_category_translation"
 }
+zip_columns = {
+
+    "olist_customers_dataset.csv": "customer_zip_code_prefix",
+    "olist_sellers_dataset.csv": "seller_zip_code_prefix",
+    "olist_geolocation_dataset.csv": "geolocation_zip_code_prefix",
+}
 conn = engine.connect()
 for filename, table_name in files.items():
-    df = pd.read_csv(f"raw_csv/{filename}")
+    dtype = None
+    if filename in zip_columns:
+        dtype = {zip_columns[filename]: str}
+    df = pd.read_csv(f"raw_csv/{filename}", dtype=dtype)
     csv_count = df.shape[0] 
     df.to_sql(table_name,
        engine,
