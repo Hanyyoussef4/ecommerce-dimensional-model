@@ -14,6 +14,14 @@ files ={
     "olist_geolocation_dataset.csv": "stg_geolocation",
     "product_category_name_translation.csv": "stg_product_category_translation"
 }
+# Zip code columns are forced to text (str) for these 3 files, not left
+# to pandas' automatic type inference. Without this, pandas reads these
+# columns as numbers and silently drops leading zeros -- a zip like
+# "01310" becomes 1310, corrupting the real value. Confirmed by checking
+# character lengths in DBeaver and comparing against the raw CSVs
+# (which do have the leading zeros, quoted as text) -- this was a bug
+# introduced by this loader's original read_csv() call, not a source
+# data issue. See notes/decisions/0006-zip-code-leading-zero-fix.md
 zip_columns = {
 
     "olist_customers_dataset.csv": "customer_zip_code_prefix",
