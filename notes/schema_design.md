@@ -215,7 +215,44 @@ join clause), unlike grain or key-strategy decisions.
 
 ## dim_date
 
-*(Not yet designed — day grain, one row per calendar date, with
-month/quarter/year and similar attributes as columns. Referenced
-multiple times by `fact_orders` as a role-playing dimension — see
-table above.)*
+**Grain:** one row per calendar date, plus 2 dedicated placeholder
+rows (see below). Referenced 8 times by `fact_orders` as a
+role-playing dimension (purchase, approved, delivered_carrier,
+delivered_customer, estimated_delivery, shipping_limit, first_review,
+most_recent_review dates — see `fact_orders` table above).
+
+**Primary key:** `date_key`, a surrogate integer in `YYYYMMDD` format
+(e.g. `20170315`) — not the native `DATE` type, despite `DATE` being a
+cheap natural key like `zip_code_prefix`. See
+[ADR 0007](decisions/0007-dim-date-key-strategy-and-placeholders.md)
+for why: several `fact_orders` date columns are legitimately `NULL`
+for real lifecycle reasons (e.g. undelivered orders have no
+`delivered_customer_date` yet), and a `NULL` foreign key causes
+`INNER JOIN` to silently drop those fact rows. A surrogate key allows
+dedicated placeholder rows instead.
+
+**Date range:** `2016-09-04` to `2018-11-12` — the true overall
+min/max across all 7 underlying source date columns (`stg_orders` x5,
+`stg_order_items.shipping_limit_date`,
+`stg_order_reviews.review_creation_date`), checked via a `UNION ALL`
+of per-column `MIN`/`MAX` wrapped in a CTE. Deliberately generated for
+this exact range rather than an arbitrary wide range (e.g. covering
+future years), since this is a one-time load of a static historical
+dataset that won't receive new data — see ADR 0007.
+
+**Placeholder rows (see ADR 0007):**
+
+| date_key | full_date | Meaning |
+|---|---|---|
+| `-1` | `NULL` | Not applicable / hasn't happened yet (e.g. order not yet delivered, no review submitted) |
+| `-2` | `NULL` | Value present in source but known invalid — used only for the 4 corrupted `shipping_limit_date` rows in `stg_order_items` (each dated ~2020, years after the same order's own delivery date — confirmed data entry errors, not real dates) |
+
+| Column | Source | Notes |
+|---|---|---|
+| `date_key` | generated | surrogate PK, `YYYYMMDD` format |
+| `full_date` | generated | the actual calendar date (`NULL` for the 2 placeholder rows) |
+| `year` | generated, derived from `full_date` | |
+| `quarter` | generated, derived from `full_date` | |
+| `month` | generated, derived from `full_date` | |
+| `week_number` | generated, derived from `full_date` | |
+| `day_of_week` | generated, derived from `full_date` | stored as a name (e.g. `'Monday'`), not a number |
