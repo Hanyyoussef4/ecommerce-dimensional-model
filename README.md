@@ -104,7 +104,7 @@ highlights:
 
 ## Target Schema
 
-- `fact_orders` — grain TBD (order line item level, most likely)
+- `fact_orders` — grain: order line item level
 - `dim_customers`
 - `dim_products`
 - `dim_sellers`
@@ -148,7 +148,22 @@ follow the pipeline steps below as they're completed.
   columns) and documented via ADRs in `notes/decisions/` and
   `notes/schema_design.md`. `dim_sellers`, `dim_geolocation`, and
   `dim_date` still to be designed.
-- *(upcoming)* Star schema design completed; dims + fact built in SQL.
+- **2026-08-31** — Found and fixed a real data quality bug: zip code
+  leading zeros were being silently dropped by the loader (pandas
+  numeric type inference), affecting ~24-33% of rows across 3 staging
+  tables. Fixed at the load-hygiene layer per the project's ELT
+  principle, reloaded, and documented (ADR 0006). `dim_sellers` and
+  `dim_geolocation` fully designed — including a documented
+  referential-integrity gap between `stg_geolocation` and
+  `stg_customers`/`stg_sellers` zip coverage.
+- **2026-09-01** — `dim_date` designed, completing the star schema:
+  surrogate `YYYYMMDD` key (not native `DATE`) to support dedicated
+  placeholder rows for missing and known-invalid dates, after finding
+  and diagnosing 4 corrupted `shipping_limit_date` values as genuine
+  data entry errors (ADR 0007). **Star schema design phase complete**
+  — all 6 tables (`fact_orders` + 5 dimensions) designed and
+  documented across 7 ADRs.
+- *(upcoming)* Dimension and fact tables built in SQL.
 - *(upcoming)* Checkpoint queries written; project finalized.
 
 ## Status
@@ -158,7 +173,7 @@ follow the pipeline steps below as they're completed.
       (`notes/data_exploration.md`)
 - [x] `ecommerce_dw` database created
 - [x] Raw CSVs loaded to Postgres staging tables
-- [ ] Star schema designed
+- [x] Star schema designed
 - [ ] Dimension tables built (SQL)
 - [ ] Fact table built (SQL)
 - [ ] Checkpoint queries written (top sellers by revenue — window
