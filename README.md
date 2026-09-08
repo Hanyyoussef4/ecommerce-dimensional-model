@@ -163,7 +163,15 @@ follow the pipeline steps below as they're completed.
   data entry errors (ADR 0007). **Star schema design phase complete**
   — all 6 tables (`fact_orders` + 5 dimensions) designed and
   documented across 7 ADRs.
-- *(upcoming)* Dimension and fact tables built in SQL.
+- **2026-09-05/07** — SQL build phase started: `dim_products` and
+  `dim_customers` built (`CREATE TABLE` + `INSERT INTO ... SELECT`,
+  surrogate keys via `GENERATED ALWAYS AS IDENTITY` per
+  [ADR 0008](notes/decisions/0008-surrogate-key-generation-strategy.md)),
+  verified row-for-row against known distinct counts (32,951 products,
+  96,096 customers), and committed as `sql/build_dim_products.sql` /
+  `sql/build_dim_customers.sql`. `dim_sellers`, `dim_geolocation`, and
+  `dim_date` still to be built.
+- *(upcoming)* Remaining dimension tables and `fact_orders` built in SQL.
 - *(upcoming)* Checkpoint queries written; project finalized.
 
 ## Status
