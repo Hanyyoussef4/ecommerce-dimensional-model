@@ -77,3 +77,14 @@ Reasons:
 - If new anomaly patterns are found later (e.g. during the SQL build
   step), the correction table can simply be extended with more rows —
   it's a living reference table, not a one-time fixed list.
+- **Corrections are matched by `seller_city` text alone, not scoped by
+  `seller_zip_code_prefix`** — the join is `raw_value = seller_city`,
+  with no zip condition. This means a given raw value is corrected the
+  same way everywhere it appears in `stg_sellers`, regardless of zip.
+  Verified safe for this dataset: none of the 27 raw values in
+  `seller_city_corrections.csv` require a *different* correction
+  depending on zip (e.g. `sp` always resolves to `'not specified'`
+  across all 4 zips it appears in). If a future raw value ever needed
+  zip-dependent resolution, this design would silently apply the wrong
+  correction — would require adding `seller_zip_code_prefix` to the
+  seed table and the join condition at that point.
