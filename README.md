@@ -171,6 +171,20 @@ follow the pipeline steps below as they're completed.
   96,096 customers), and committed as `sql/build_dim_products.sql` /
   `sql/build_dim_customers.sql`. `dim_sellers`, `dim_geolocation`, and
   `dim_date` still to be built.
+- **2026-09-10/11** — `seed_seller_city_corrections` seed table built:
+  the 27 known bad `seller_city` values catalogued during exploration
+  (`notes/seller_city_anomalies.csv`) converted to a `raw_value` →
+  `corrected_value` mapping (`notes/seller_city_corrections.csv`),
+  loaded via `scripts/load_seller_city_corrections.py`, and verified
+  (27 rows). `dim_sellers` built (`CREATE TABLE` + `INSERT INTO ...
+  SELECT`, surrogate `seller_key`, `seller_city` corrected via
+  `LEFT JOIN` + `COALESCE` against the seed table per
+  [ADR 0005](notes/decisions/0005-dim-sellers-city-cleanup.md)),
+  verified against the confirmed distinct count (3,095 sellers), and
+  committed as `sql/build_dim_sellers.sql`. ADR 0005 updated to
+  document that corrections match on city text alone, not scoped by
+  zip — confirmed safe for this dataset's 27 values. `dim_geolocation`
+  and `dim_date` still to be built.
 - *(upcoming)* Remaining dimension tables and `fact_orders` built in SQL.
 - *(upcoming)* Checkpoint queries written; project finalized.
 

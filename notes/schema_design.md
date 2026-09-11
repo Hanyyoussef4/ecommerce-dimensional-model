@@ -145,11 +145,15 @@ be copied into every `fact_orders` row referencing that seller.
 | `seller_state` | `stg_sellers` | |
 | `seller_zip_code_prefix` | `stg_sellers` | |
 
-**Known cleanup needed (handled in SQL transform, not here):**
-`seller_city` data quality issues across 34 zip prefixes (112 of 3,095
-sellers), see `notes/seller_city_anomalies.csv` and
+**Known cleanup needed (handled in SQL transform):** `seller_city` data
+quality issues (27 distinct bad values found across 34 zip prefixes),
+see `notes/seller_city_anomalies.csv` and
 [ADR 0005](decisions/0005-dim-sellers-city-cleanup.md) — resolved via
-a manual correction seed table, not yet built.
+a manual correction seed table (`seed_seller_city_corrections`, loaded
+by `scripts/load_seller_city_corrections.py`), applied in
+`sql/build_dim_sellers.sql` via `LEFT JOIN` + `COALESCE`. Built and
+verified: 3,095 rows in `dim_sellers`, matching the confirmed distinct
+`seller_id` count.
 
 ## dim_geolocation
 
