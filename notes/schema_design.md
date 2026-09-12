@@ -178,12 +178,17 @@ directly to `fact_orders`.
 | `city` | `stg_geolocation`, `MODE() WITHIN GROUP` per zip, after accent/casing normalization | most common city name per zip once accent/casing noise is normalized (e.g. "sao paulo" vs "são paulo") — see known cleanup below |
 | `state` | `stg_geolocation`, `MODE() WITHIN GROUP` per zip | most common state per zip |
 
-**Known cleanup needed (handled in SQL transform, not here):**
-261,831 exact duplicate rows in `stg_geolocation`, and city name
-accent-mark/casing normalization (~25% of apparent city-name variety
-in the raw data is noise, not real distinct values — see
-`notes/data_exploration.md`) needed before `MODE()` can pick a
-meaningful most-common city per zip.
+**Known cleanup needed (handled in SQL transform):** 261,831 exact
+duplicate rows in `stg_geolocation`. City name normalization before
+`MODE()` can pick a meaningful most-common city per zip — see
+[ADR 0009](decisions/0009-dim-geolocation-city-normalization.md):
+`unaccent` + `LOWER()` resolves ~25% apparent duplicate variety
+automatically (8,011 → 5,969 distinct values), plus a small manual
+correction seed table (`seed_geolocation_city_corrections`, 13 rows)
+for genuine encoding corruption and full-address-as-city values that
+normalization alone can't fix. Note: 10 values that looked anomalous
+at first (e.g. `tamoios (cabo frio)`) are legitimate Brazilian
+sub-district names and are intentionally left unmodified.
 
 **Referential integrity gap (documented, not an ADR — see reasoning
 below):** `stg_geolocation`'s zip coverage is incomplete relative to
