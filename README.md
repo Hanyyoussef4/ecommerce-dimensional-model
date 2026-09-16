@@ -185,6 +185,23 @@ follow the pipeline steps below as they're completed.
   document that corrections match on city text alone, not scoped by
   zip — confirmed safe for this dataset's 27 values. `dim_geolocation`
   and `dim_date` still to be built.
+- **2026-09-12/16** — `dim_geolocation` designed and built: normalization
+  approach documented in
+  [ADR 0009](notes/decisions/0009-dim-geolocation-city-normalization.md)
+  after investigating `unaccent`/`LOWER()` collapsed 8,011 raw distinct
+  city values to 5,969 (~25.5% reduction, matching the ~25% found
+  during Python exploration), then root-caused the remaining 23
+  leftover values down to 11 genuine corruption cases (HTML entities,
+  double URL/HTML encoding, charset mis-decodes) plus 2
+  full-address-as-city values, distinguishing those from 10 legitimate
+  Brazilian sub-district names that only looked anomalous.
+  `seed_geolocation_city_corrections` (13 rows) built and loaded via
+  `scripts/seed_geolocation_city_corrections.py`. `dim_geolocation`
+  built (`CREATE TABLE` + two chained CTEs + `INSERT INTO ... SELECT`
+  with `AVG()`/`MODE() WITHIN GROUP` to collapse ~1M raw rows down to
+  one row per zip), verified against the confirmed distinct zip count
+  (19,015), and committed as `sql/build_dim_geolocation.sql`. `dim_date`
+  is the last remaining dimension before `fact_orders`.
 - *(upcoming)* Remaining dimension tables and `fact_orders` built in SQL.
 - *(upcoming)* Checkpoint queries written; project finalized.
 
