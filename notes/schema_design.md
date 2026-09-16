@@ -179,8 +179,9 @@ directly to `fact_orders`.
 | `state` | `stg_geolocation`, `MODE() WITHIN GROUP` per zip | most common state per zip |
 
 **Known cleanup needed (handled in SQL transform):** 261,831 exact
-duplicate rows in `stg_geolocation`. City name normalization before
-`MODE()` can pick a meaningful most-common city per zip — see
+duplicate rows in `stg_geolocation` — not explicitly deduped, since
+`AVG()`/`MODE()` produce the same result whether or not exact
+duplicates are removed first. City name normalization per
 [ADR 0009](decisions/0009-dim-geolocation-city-normalization.md):
 `unaccent` + `LOWER()` resolves ~25% apparent duplicate variety
 automatically (8,011 → 5,969 distinct values), plus a small manual
@@ -188,7 +189,9 @@ correction seed table (`seed_geolocation_city_corrections`, 13 rows)
 for genuine encoding corruption and full-address-as-city values that
 normalization alone can't fix. Note: 10 values that looked anomalous
 at first (e.g. `tamoios (cabo frio)`) are legitimate Brazilian
-sub-district names and are intentionally left unmodified.
+sub-district names and are intentionally left unmodified. Built and
+verified: 19,015 rows in `dim_geolocation`, matching the confirmed
+distinct `geolocation_zip_code_prefix` count in `stg_geolocation`.
 
 **Referential integrity gap (documented, not an ADR — see reasoning
 below):** `stg_geolocation`'s zip coverage is incomplete relative to
