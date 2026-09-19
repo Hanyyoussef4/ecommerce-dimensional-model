@@ -111,6 +111,16 @@ highlights:
 - `dim_geolocation`
 - `dim_date`
 
+![Star schema ER diagram](notes/images/star_schema_erd.png)
+
+`fact_orders` sits at the center, with foreign keys to `dim_products`,
+`dim_sellers`, and `dim_customers`. `dim_date` is a **role-playing
+dimension** — referenced 8 separate times (highlighted above) to
+capture 8 distinct date facts per order line item (purchase, approval,
+carrier handoff, customer delivery, estimated delivery, shipping
+deadline, first review, most recent review) from a single calendar
+table, rather than duplicating date attributes across 8 columns.
+
 ## Tech Stack
 
 Python 3.12 (pandas, SQLAlchemy, psycopg2), PostgreSQL, DBeaver, VSCode.
@@ -231,7 +241,14 @@ follow the pipeline steps below as they're completed.
   (matching ADR 0007's documented corrupted-row count). Committed as
   `sql/build_fact_orders.sql`. **The star schema is now fully built**
   — checkpoint queries are the only remaining step.
-- *(upcoming)* Checkpoint queries written; project finalized.
+- **2026-09-19** — 11 foreign key constraints added to `fact_orders`
+  (`sql/add_foreign_keys.sql`), referencing `dim_products`,
+  `dim_sellers`, `dim_customers`, and `dim_date` 8 times over for its
+  8 role-playing date columns. Verified via DBeaver's ER diagram,
+  which now renders all relationship lines correctly (see
+  [Target Schema](#target-schema) above) — only possible because
+  every date-key column is guaranteed to resolve to a real `dim_date`
+  row, including the `-1`/`-2` placeholder rows from ADR 0007.
 - *(upcoming)* Checkpoint queries written; project finalized.
 
 ## Status
