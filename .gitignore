@@ -3,3 +3,8 @@ raw_csv/
 .DS_Store
 __pycache__/
 *.pyc
+
+# Raw DBeaver screenshots (working files, not curated for the repo) --
+# the cropped/curated version used in the README lives in
+# notes/images/ instead.
+PNGs/
