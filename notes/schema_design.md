@@ -7,6 +7,15 @@ behind each choice. See the linked ADRs for *why*.
 
 ## fact_orders
 
+**Built and verified:** 112,650 rows (exact match to `stg_order_items`),
+zero `NULL`s across all 8 date-key columns, and exactly 4 rows with
+`shipping_limit_date_key = -2` (matching ADR 0007's documented
+corrupted-row count). Committed as `sql/build_fact_orders.sql`. While
+building this, found and fixed a load-hygiene bug where all 8
+date/timestamp source columns were stored as `TEXT` in staging rather
+than a real date type — see [ADR 0010](decisions/0010-date-column-type-fix.md).
+This completes the star schema: all 5 dimensions plus `fact_orders`.
+
 **Grain:** one row per order line item (matches `stg_order_items` —
 one product within one order). See
 [ADR 0001](decisions/0001-fact-orders-grain-and-payment-handling.md).
