@@ -227,6 +227,12 @@ join clause), unlike grain or key-strategy decisions.
 
 ## dim_date
 
+**Built and verified:** 802 rows (800 calendar days across the date
+range below + 2 placeholder rows), matching the expected total.
+Generated via `generate_series()` rather than derived from a staging
+table — the one dimension with no direct source table — and committed
+as `sql/build_dim_date.sql`.
+
 **Grain:** one row per calendar date, plus 2 dedicated placeholder
 rows (see below). Referenced 8 times by `fact_orders` as a
 role-playing dimension (purchase, approved, delivered_carrier,
