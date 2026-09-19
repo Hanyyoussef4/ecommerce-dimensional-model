@@ -202,7 +202,18 @@ follow the pipeline steps below as they're completed.
   one row per zip), verified against the confirmed distinct zip count
   (19,015), and committed as `sql/build_dim_geolocation.sql`. `dim_date`
   is the last remaining dimension before `fact_orders`.
-- *(upcoming)* Remaining dimension tables and `fact_orders` built in SQL.
+- **2026-09-18** — `dim_date` built via `generate_series()` — the one
+  dimension with no direct source table, generated rather than
+  transformed. `date_key` computed as a surrogate `YYYYMMDD` integer
+  (not `GENERATED ALWAYS AS IDENTITY` like the other dimensions, and
+  not a native `DATE`, per [ADR 0007](notes/decisions/0007-dim-date-key-strategy-and-placeholders.md)),
+  spanning the confirmed `2016-09-04` to `2018-11-12` date range plus
+  2 `UNION ALL`-appended placeholder rows for not-applicable and
+  known-invalid dates. Verified: 802 rows (800 calendar days + 2
+  placeholders), committed as `sql/build_dim_date.sql`. **All 5
+  dimension tables are now built and verified** — `fact_orders` and
+  the checkpoint queries are all that remain.
+- *(upcoming)* `fact_orders` built in SQL.
 - *(upcoming)* Checkpoint queries written; project finalized.
 
 ## Status
@@ -213,7 +224,7 @@ follow the pipeline steps below as they're completed.
 - [x] `ecommerce_dw` database created
 - [x] Raw CSVs loaded to Postgres staging tables
 - [x] Star schema designed
-- [ ] Dimension tables built (SQL)
+- [x] Dimension tables built (SQL)
 - [ ] Fact table built (SQL)
 - [ ] Checkpoint queries written (top sellers by revenue — window
       function; month-over-month order trends — CTE; above-average
