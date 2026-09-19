@@ -28,12 +28,42 @@ zip_columns = {
     "olist_sellers_dataset.csv": "seller_zip_code_prefix",
     "olist_geolocation_dataset.csv": "geolocation_zip_code_prefix",
 }
+
+# Date/timestamp columns are forced to parse as real dates for these 3
+# files, not left to pandas' default behavior. Without this, pandas
+# reads these columns as plain strings, and to_sql() then creates them
+# as TEXT in Postgres -- discovered while building fact_orders, when
+# TO_CHAR() failed against these columns. Confirmed via
+# information_schema.columns that every date/timestamp column across
+# stg_orders, stg_order_items, and stg_order_reviews was stored as
+# text. See notes/decisions/0010-date-column-type-fix.md
+date_columns = {
+
+    "olist_orders_dataset.csv": [
+        "order_purchase_timestamp",
+        "order_approved_at",
+        "order_delivered_carrier_date",
+        "order_delivered_customer_date",
+        "order_estimated_delivery_date",
+    ],
+    "olist_order_items_dataset.csv": ["shipping_limit_date"],
+    "olist_order_reviews_dataset.csv": [
+        "review_creation_date",
+        "review_answer_timestamp",
+    ],
+}
+
 conn = engine.connect()
 for filename, table_name in files.items():
     dtype = None
     if filename in zip_columns:
         dtype = {zip_columns[filename]: str}
-    df = pd.read_csv(f"raw_csv/{filename}", dtype=dtype)
+
+    parse_dates = None
+    if filename in date_columns:
+        parse_dates = date_columns[filename]
+
+    df = pd.read_csv(f"raw_csv/{filename}", dtype=dtype, parse_dates=parse_dates)
     csv_count = df.shape[0] 
     df.to_sql(table_name,
        engine,
