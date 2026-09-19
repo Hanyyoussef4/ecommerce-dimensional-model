@@ -213,7 +213,25 @@ follow the pipeline steps below as they're completed.
   placeholders), committed as `sql/build_dim_date.sql`. **All 5
   dimension tables are now built and verified** — `fact_orders` and
   the checkpoint queries are all that remain.
-- *(upcoming)* `fact_orders` built in SQL.
+- **2026-09-19** — `fact_orders` built: one row per order line item
+  (112,650 rows, matching `stg_order_items` exactly), resolving all 10
+  foreign keys (`product_key`/`seller_key` direct lookups,
+  `customer_key` via a two-hop join through `stg_customers` per ADR
+  0002, and 8 separate `dim_date` role-playing lookups via `LEFT JOIN`
+  + `COALESCE`/`CASE`) plus two pre-aggregation CTEs collapsing
+  `stg_order_payments`/`stg_order_reviews` to one row per order before
+  joining in. While building this, found and fixed a real load-hygiene
+  bug — all 8 date/timestamp source columns were stored as `TEXT` in
+  staging, not a real date type, because the original loader had no
+  `parse_dates` argument. Fixed in `scripts/load_raw_to_postgres.py`,
+  reloaded the 3 affected staging tables, and documented as
+  [ADR 0010](notes/decisions/0010-date-column-type-fix.md), following
+  the same load-layer-fix precedent as ADR 0006. Verified zero `NULL`
+  date-keys and exactly 4 rows with `shipping_limit_date_key = -2`
+  (matching ADR 0007's documented corrupted-row count). Committed as
+  `sql/build_fact_orders.sql`. **The star schema is now fully built**
+  — checkpoint queries are the only remaining step.
+- *(upcoming)* Checkpoint queries written; project finalized.
 - *(upcoming)* Checkpoint queries written; project finalized.
 
 ## Status
@@ -225,7 +243,7 @@ follow the pipeline steps below as they're completed.
 - [x] Raw CSVs loaded to Postgres staging tables
 - [x] Star schema designed
 - [x] Dimension tables built (SQL)
-- [ ] Fact table built (SQL)
+- [x] Fact table built (SQL)
 - [ ] Checkpoint queries written (top sellers by revenue — window
       function; month-over-month order trends — CTE; above-average
       order value customers — subquery)
