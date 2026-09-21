@@ -121,6 +121,25 @@ carrier handoff, customer delivery, estimated delivery, shipping
 deadline, first review, most recent review) from a single calendar
 table, rather than duplicating date attributes across 8 columns.
 
+## Key Findings
+
+Results from the three checkpoint queries against the finished star
+schema (see `sql/checkpoint1_*.sql` through `checkpoint3_*.sql`):
+
+- **Top sellers are heavily concentrated in São Paulo state.** 9 of
+  the top 10 sellers by total revenue are based in SP; the single
+  highest-revenue seller (Guariba, SP) generated $229,472.63 across
+  the dataset.
+- **Order volume grew sharply through the platform's first year.**
+  From 3 orders in September 2016 (the earliest month in this
+  dataset) to over 3,600/month by mid-2017 — a pattern consistent
+  with a marketplace scaling up rapidly, not steady-state demand.
+- **The average order value across the whole dataset is $137.75.**
+  Customers whose average order value exceeds that figure skew
+  heavily toward one-time, high-value purchases rather than frequent
+  smaller ones — most qualifying customers placed exactly one order,
+  with the single highest average order value reaching $13,440.
+
 ## Tech Stack
 
 Python 3.12 (pandas, SQLAlchemy, psycopg2), PostgreSQL, DBeaver, VSCode.
@@ -249,7 +268,25 @@ follow the pipeline steps below as they're completed.
   [Target Schema](#target-schema) above) — only possible because
   every date-key column is guaranteed to resolve to a real `dim_date`
   row, including the `-1`/`-2` placeholder rows from ADR 0007.
-- *(upcoming)* Checkpoint queries written; project finalized.
+- **2026-09-20** — All 3 checkpoint SQL queries written, verified, and
+  committed, closing out the project's original skill-gap goal:
+  top sellers by revenue (`sql/checkpoint1_top_sellers_by_revenue.sql`,
+  `DENSE_RANK()`), month-over-month order trends
+  (`sql/checkpoint2_month_over_month_trends.sql`, two chained CTEs plus
+  `LAG()`), and above-average order value customers
+  (`sql/checkpoint3_above_average_customers_subquery.sql`, a scalar
+  subquery in the `WHERE` clause). Checkpoint 3 also has a second,
+  window-function-based version
+  (`sql/checkpoint3_above_average_customers_window_function.sql`) kept
+  alongside the subquery version deliberately, to show the same result
+  reached two different ways. Along the way, caught and fixed a real
+  integer-division bug in checkpoint 2 (Postgres truncates `bigint /
+  bigint` before it can be scaled or rounded — a `::numeric` cast was
+  required to get correct percentages) and a `PARTITION BY` misuse in
+  checkpoint 1 (partitioning by the same columns already used to
+  produce one row per group leaves window functions like `LAG()`
+  nothing to look back at). **Project complete** — all schema and
+  analysis goals from the original README are done.
 
 ## Status
 
@@ -261,7 +298,7 @@ follow the pipeline steps below as they're completed.
 - [x] Star schema designed
 - [x] Dimension tables built (SQL)
 - [x] Fact table built (SQL)
-- [ ] Checkpoint queries written (top sellers by revenue — window
+- [x] Checkpoint queries written (top sellers by revenue — window
       function; month-over-month order trends — CTE; above-average
       order value customers — subquery)
 
